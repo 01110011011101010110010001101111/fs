@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(SimpleFileSystem)
+# Set the project name
+project(SimpleDistributedFileSystem)
 
+# Set the C++ standard
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Specify the source directory
 set(SOURCE_DIR src)
-add_executable(SimpleFileSystem ${SOURCE_DIR}/fs.cc)
-add_executable(Benchmark ${SOURCE_DIR}/benchmark.cc ${SOURCE_DIR}/FileSystem.h)
+
+# Add the executable for the main application
+add_executable(SimpleDistributedFileSystem ${SOURCE_DIR}/main.cpp ${SOURCE_DIR}/Client.cpp ${SOURCE_DIR}/MetadataServer.cpp)
