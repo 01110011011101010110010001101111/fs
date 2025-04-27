@@ -29,6 +29,7 @@ int Coordinator::requestFile(std::string filename) {
     hash<string> hasher;
     size_t hash = hasher(filename);
     int server_num = hash % NUM_SERVERS;
+    file_server_data[filename] = server_num;
     return server_num
 }
 
