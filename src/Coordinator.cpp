@@ -17,12 +17,12 @@ public:
 private:
     // Map of [file] -> server
     std::map<std::string, int> file_server_data;
-}
+};
 
 int Coordinator::requestFile(std::string filename) {
     for (const auto& [file, server] : file_server_data) {
         if (file == filename) {
-            return server 
+            return server;
         }
     }
 
@@ -30,7 +30,7 @@ int Coordinator::requestFile(std::string filename) {
     size_t hash = hasher(filename);
     int server_num = hash % NUM_SERVERS;
     file_server_data[filename] = server_num;
-    return server_num
+    return server_num;
 }
 
 
