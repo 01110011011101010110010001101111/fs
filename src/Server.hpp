@@ -2,11 +2,14 @@
 #define SERVER_HPP
 
 #include <string>
+#include <map>
 
 class Server {
 public:
-    std::string requestFile(const std::string filename);
+    std::string readFile(const std::string filename);
     void writeFile(std::string filename, std::string new_content);
+private:
+    std::map<std::string, std::string> file_to_data;
 };
 
 #endif // SERVER_HPP
