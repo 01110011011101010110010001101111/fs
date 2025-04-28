@@ -14,7 +14,7 @@ public:
 
 private:
     // Map of [file] -> server_data
-    std::map<std::string, string> file_to_data;
+    std::map<std::string, std::string> file_to_data;
 }
 
 string Server::requestFile(std::string filename) {
@@ -29,6 +29,3 @@ string Server::requestFile(std::string filename) {
     return file_to_data[filename];
 
 }
-
-
-
