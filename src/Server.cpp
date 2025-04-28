@@ -29,6 +29,3 @@ std::string requestFile(std::string filename) {
     return file_to_data[filename];
 
 }
-
-
-
