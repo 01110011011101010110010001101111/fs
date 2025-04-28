@@ -40,7 +40,7 @@ int main() {
     srvs.push_back(srv1);
     srvs.push_back(srv2);
 
-    // Client(2, coord, srvs);
+    Client(2, coord, srvs);
 
     return 0;
 }

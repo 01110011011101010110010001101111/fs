@@ -2,7 +2,7 @@
 #define COORDINATOR_H
 
 #include <string>
-#include <map>
+#include <unordered_map>
 
 class Coordinator {
 public:
@@ -11,7 +11,7 @@ public:
 
 private:
     int n_srvs;
-    std::map<std::string, int> file_server_data;
+    std::unordered_map<std::string, int> file_server_data;
 };
 
 #endif // COORDINATOR_H
