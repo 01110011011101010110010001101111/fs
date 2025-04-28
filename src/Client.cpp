@@ -12,24 +12,26 @@ public:
         assert(srvs.size() == n_srvs);
     }
 
+    int get_n_srvs() {
+        return this->n_srvs;
+    }
+
     std::string read_file(const std::string& filename) {
         const int srv = coord.requestFile(filename);
         return srvs[srv].readFile(filename);
     }
 
-    std::string write_file(const std::string& filename, const std::string& content) {
+    void write_file(const std::string& filename, const std::string& content) {
         const int srv = coord.requestFile(filename);
         srvs[srv].writeFile(filename, content);
     }
 
-    std::string create_file(const std::string& filename) {
+    void create_file(const std::string& filename) {
         const int srv = coord.requestFile(filename);
         srvs[srv].writeFile(filename, "");
     }
 
-    std::string delete_file() {
-
-    }
+    void delete_file() {}
 private:
     Coordinator coord;
     int n_srvs;
@@ -45,7 +47,9 @@ int main() {
     srvs.push_back(srv2);
 
     Client clnt(2, coord, srvs);
+    std::cout << clnt.get_n_srvs() << "\n";
 
+    std::string filename = "tmp";
     clnt.write_file("tmp", "random\n");
     std::cout << clnt.read_file("tmp");
 
