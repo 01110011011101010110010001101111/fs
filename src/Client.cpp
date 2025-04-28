@@ -2,6 +2,7 @@
 #include "Server.hpp"
 #include <vector>
 #include <cassert>
+#include <iostream>
 
 class Client {
 public:
@@ -11,21 +12,24 @@ public:
         assert(srvs.size() == n_srvs);
     }
 
-    // std::string read_file() {
-    //     
-    // }
+    std::string read_file(const std::string& filename) {
+        const int srv = coord.requestFile(filename);
+        return srvs[srv].readFile(filename);
+    }
 
-    // std::string write_file() {
+    std::string write_file(const std::string& filename, const std::string& content) {
+        const int srv = coord.requestFile(filename);
+        srvs[srv].writeFile(filename, content);
+    }
 
-    // }
+    std::string create_file(const std::string& filename) {
+        const int srv = coord.requestFile(filename);
+        srvs[srv].writeFile(filename, "");
+    }
 
-    // std::string create_file() {
+    std::string delete_file() {
 
-    // }
-
-    // std::string delete_file() {
-
-    // }
+    }
 private:
     Coordinator coord;
     int n_srvs;
@@ -40,7 +44,10 @@ int main() {
     srvs.push_back(srv1);
     srvs.push_back(srv2);
 
-    Client(2, coord, srvs);
+    Client clnt(2, coord, srvs);
+
+    clnt.write_file("tmp", "random\n");
+    std::cout << clnt.read_file("tmp");
 
     return 0;
 }
