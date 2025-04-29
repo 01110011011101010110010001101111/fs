@@ -5,6 +5,7 @@
 #include <hash_map>
 #include <vector>
 #include <memory>
+#include <stdio.h>
 #include "../src/Coordinator.hpp"
 
 #define NUM_SERVERS 2
