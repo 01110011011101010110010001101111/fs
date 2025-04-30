@@ -7,23 +7,19 @@ int main(int argc, char** argv) {
     }
     const char* srv_ip = argv[1];
     const char* port   = argv[2];
-    std::cout << "wut" << std::endl;
 
     /* ---------- 1. RDMA-CM address/route resolution ---------- */
     rdma_event_channel* ec = rdma_create_event_channel();
     rdma_cm_id* id{};
     if (rdma_create_id(ec, &id, nullptr, RDMA_PS_TCP))            die("create_id");
-    std::cerr << "what\n";
     sockaddr_in dst{};
     dst.sin_family = AF_INET;
     dst.sin_port   = htons(std::stoi(port));
     if (!inet_pton(AF_INET, srv_ip, &dst.sin_addr))               die("inet_pton");
     // get_addr(srv_ip, );
-    std::cerr << "HERE\n";
 
     if (rdma_resolve_addr(id, nullptr,
                           reinterpret_cast<sockaddr*>(&dst), 2000)) die("resolve_addr");
-    std::cerr << "There" << std::endl;
     rdma_cm_event* ev{};
     rdma_get_cm_event(ec, &ev);                                   // ADDR_RESOLVED
     rdma_ack_cm_event(ev);
@@ -73,7 +69,7 @@ int main(int argc, char** argv) {
     swr.sg_list    = &sge;
     swr.num_sge    = 1;
     swr.opcode     = IBV_WR_SEND;
-    swr.send_flags = IBV_SEND_SIGNALED;
+    swr.send_flags = IBV_SEND_SIGNALED | IBV_SEND_INLINE;
 
     if (ibv_post_send(id->qp, &swr, &bad))                        die("post_send");
 
