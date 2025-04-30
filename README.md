@@ -18,6 +18,15 @@ make
 `export PKG_CONFIG_PATH="$HOME/.local/lib64/pkgconfig:$PKG_CONFIG_PATH"`
 `export LD_LIBRARY_PATH="$HOME/.local/lib64:$LD_LIBRARY_PATH`
 
+# rdma-example
+`git clone https://github.com/animeshtrivedi/rdma-example.git`
+`cmake .`
+`make`
+`ip -o -4 addr show ib0`
+get the address from above
+`./bin/rdma_server`
+`./bin/rdma_client -a <address> -s "yo"`
+
 ## Engage Links Reference
 
 * https://engaging-web.mit.edu/eofe-wiki/logging_in/ssh/
