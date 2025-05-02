@@ -15,7 +15,17 @@
 #include <map>
 #include <cstring>
 
-#define USE_
+const std::string base_path = "/home/alexhu/orcd/c7/pool/test1";
+
+inline std::string full_path(const char*path){
+	std::string result = base_path;
+	if(path[0] == '/'){
+		result += std::string{path};
+	}else{
+		result += ("/" + std::string{path});
+	}
+	return result;
+}
 
 void* rdmafs_init(fuse_conn_info*, fuse_config*) {
     /**
@@ -26,18 +36,18 @@ void* rdmafs_init(fuse_conn_info*, fuse_config*) {
 }
 
 int rdmafs_getattr(const char* path, struct stat* stbuf, fuse_file_info*) {
-    if(lstat(path, stbuf)==-1) return -errno;
+    if(lstat(full_path(path).c_str(), stbuf)==-1) return -errno;
     return 0;
 }
 
 int rdmafs_access(const char *path, int mask) {
-	if (access(path, mask) == -1) return -errno;
+	if (access(full_path(path).c_str(), mask) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_readlink(const char *path, char *buf, size_t size) {
     int res;
-	if ( (res = readlink(path, buf, size - 1)) == -1) return -errno;
+	if ( (res = readlink(full_path(path).c_str(), buf, size - 1)) == -1) return -errno;
 	buf[res] = '\0';
 	return 0;
 }
@@ -45,13 +55,10 @@ int rdmafs_readlink(const char *path, char *buf, size_t size) {
 int rdmafs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     off_t offset, struct fuse_file_info *fi,
     enum fuse_readdir_flags flags) {
-    
-    DIR *dp;
-    dirent *de;
-
-    dp = opendir(path);
+    DIR* dp = opendir(full_path(path).c_str());
     if (!dp) return -errno;
 
+	dirent *de;
     while ((de = readdir(dp))) {
         struct stat st;
         memset(&st, 0, sizeof(st));
@@ -77,32 +84,6 @@ int mknod_wrapper(int dirfd, const char *path, const char *link,
 		res = symlinkat(link, dirfd, path);
 	} else if (S_ISFIFO(mode)) {
 		res = mkfifoat(dirfd, path, mode);
-#ifdef __FreeBSD__
-	} else if (S_ISSOCK(mode)) {
-		struct sockaddr_un su;
-		int fd;
-
-		if (strlen(path) >= sizeof(su.sun_path)) {
-			errno = ENAMETOOLONG;
-			return -1;
-		}
-		fd = socket(AF_UNIX, SOCK_STREAM, 0);
-		if (fd >= 0) {
-			/*
-			 * We must bind the socket to the underlying file
-			 * system to create the socket file, even though
-			 * we'll never listen on this socket.
-			 */
-			su.sun_family = AF_UNIX;
-			strncpy(su.sun_path, path, sizeof(su.sun_path));
-			res = bindat(dirfd, fd, (struct sockaddr*)&su,
-				sizeof(su));
-			if (res == 0)
-				close(fd);
-		} else {
-			res = -1;
-		}
-#endif
 	} else {
 		res = mknodat(dirfd, path, mode, rdev);
 	}
@@ -113,7 +94,7 @@ int mknod_wrapper(int dirfd, const char *path, const char *link,
 int rdmafs_mknod(const char *path, mode_t mode, dev_t rdev) {
 	int res;
 
-	res = mknod_wrapper(AT_FDCWD, path, NULL, mode, rdev);
+	res = mknod_wrapper(AT_FDCWD, full_path(path).c_str(), NULL, mode, rdev);
 	if (res == -1)
 		return -errno;
 
@@ -122,7 +103,7 @@ int rdmafs_mknod(const char *path, mode_t mode, dev_t rdev) {
 
 int rdmafs_open(const char *path, struct fuse_file_info *fi) {
     int64_t fh;
-	if ( (fh = open(path, fi->flags)) == -1) return -errno;
+	if ( (fh = open(full_path(path).c_str(), fi->flags)) == -1) return -errno;
 
     /* Enable direct_io when open has flags O_DIRECT to enjoy the feature
     parallel_direct_writes (i.e., to get a shared lock, not exclusive lock,
@@ -138,7 +119,7 @@ int rdmafs_open(const char *path, struct fuse_file_info *fi) {
 
 int rdmafs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     int64_t fh;
-	if ( (fh = open(path, fi->flags, mode)) == -1) return -errno;
+	if ( (fh = open(full_path(path).c_str(), fi->flags, mode)) == -1) return -errno;
 
     /* Enable direct_io when open has flags O_DIRECT to enjoy the feature
     parallel_direct_writes (i.e., to get a shared lock, not exclusive lock,
@@ -155,7 +136,7 @@ int rdmafs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
 int rdmafs_read(const char *path, char *buf, size_t size, off_t offset,
     struct fuse_file_info *fi) {
     int fd;
-    if(!fi) fd = open(path, O_RDONLY);
+    if(!fi) fd = open(full_path(path).c_str(), O_RDONLY);
     else fd = fi->fh;
 
     if (fd == -1) return -errno;
@@ -170,7 +151,7 @@ int rdmafs_read(const char *path, char *buf, size_t size, off_t offset,
 int rdmafs_write(const char *path, const char *buf, size_t size,
     off_t offset, struct fuse_file_info *fi) {
     int fd;
-    if(!fi) fd = open(path, O_WRONLY);
+    if(!fi) fd = open(full_path(path).c_str(), O_WRONLY);
     else fd = fi->fh;
 
     if (fd == -1)
@@ -184,45 +165,45 @@ int rdmafs_write(const char *path, const char *buf, size_t size,
 }
 
 int rdmafs_mkdir(const char *path, mode_t mode) {
-	if (mkdir(path, mode) == -1) return -errno;
+	if (mkdir(full_path(path).c_str(), mode) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_unlink(const char *path) {
-	if (unlink(path) == -1) return -errno;
+	if (unlink(full_path(path).c_str()) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_rmdir(const char *path) {
-	if (rmdir(path) == -1) return -errno;
+	if (rmdir(full_path(path).c_str()) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_symlink(const char *from, const char *to) {
-	if (symlink(from, to) == -1) return -errno;
+	if (symlink(full_path(from).c_str(), full_path(to).c_str()) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_rename(const char *from, const char *to, unsigned int flags) {
 	if (flags) return -EINVAL;
-	if (rename(from, to) == -1) return -errno;
+	if (rename(full_path(from).c_str(), full_path(to).c_str()) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_link(const char *from, const char *to) {
-	if (link(from, to) == -1) return -errno;
+	if (link(full_path(from).c_str(), full_path(to).c_str()) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_chmod(const char *path, mode_t mode,
 		     struct fuse_file_info*) {
-	if (chmod(path, mode) == -1) return -errno;
+	if (chmod(full_path(path).c_str(), mode) == -1) return -errno;
 	return 0;
 }
 
 int rdmafs_chown(const char *path, uid_t uid, gid_t gid,
 		     struct fuse_file_info*) {
-	if (lchown(path, uid, gid) == -1) return -errno;
+	if (lchown(full_path(path).c_str(), uid, gid) == -1) return -errno;
 	return 0;
 }
 
@@ -230,7 +211,7 @@ int rdmafs_truncate(const char *path, off_t size,
 			struct fuse_file_info *fi) {
 	int res;
 	if (fi) res = ftruncate(fi->fh, size);
-	else res = truncate(path, size);
+	else res = truncate(full_path(path).c_str(), size);
 
 	if (res == -1) return -errno;
 	return 0;
@@ -242,7 +223,7 @@ int rdmafs_release(const char *path, struct fuse_file_info *fi) {
 }
 
 int rdmafs_statfs(const char *path, struct statvfs *stbuf) {
-	if (statvfs(path, stbuf) == -1) return -errno;
+	if (statvfs(full_path(path).c_str(), stbuf) == -1) return -errno;
 	return 0;
 }
 

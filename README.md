@@ -18,6 +18,11 @@ make
 `export PKG_CONFIG_PATH="$HOME/.local/lib64/pkgconfig:$PKG_CONFIG_PATH"`
 `export LD_LIBRARY_PATH="$HOME/.local/lib64:$LD_LIBRARY_PATH`
 
+# Running our FUSE
+`/home/alexhu/workspace/fs/src/rdmafs
+`df -T .`
+`/home/alexhu/orcd/c7/pool`
+
 # rdma-example
 `git clone https://github.com/animeshtrivedi/rdma-example.git`
 `cmake .`
