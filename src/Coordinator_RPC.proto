@@ -1,0 +1,11 @@
+service Contact {
+    rpc ContactCoordinator (Request) returns (Reply) {}
+}
+
+message Request {
+    string filename = 1;
+}
+
+message Reply {
+    int server = 1;
+}
