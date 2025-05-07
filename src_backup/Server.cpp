@@ -23,7 +23,6 @@ std::vector<std::string> Server::splitPath(const std::string& path) {
 }
 
 Server::Directory* Server::navigateTo(const std::string& path) {
-    // std::lock_guard<std::mutex> lock(mtx);
     Directory* current = &root;
     auto components = splitPath(path);
 
@@ -39,7 +38,7 @@ Server::Directory* Server::navigateTo(const std::string& path) {
 
 // clients request a file from the server. If it doesn't exist, throw error
 std::string Server::readFile(const std::string& path) {
-    // std::lock_guard<std::mutex> lock(mtx);
+    std::lock_guard<std::mutex> lock(mtx);
     Directory* dir = navigateTo(path);
     if (dir && dir->is_file) {
         return dir->file_content;

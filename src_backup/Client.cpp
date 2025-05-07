@@ -38,6 +38,26 @@ private:
     std::vector<Server> srvs;
 };
 
+// std::mutex mtx_2; // Mutex for synchronizing access to shared resources
+
+// void client_operations(int id, Coordinator& coord, std::vector<Server>& srvs) {
+//     Client clnt(2, coord, srvs);
+// 
+//     // Example operations
+//     {
+//         std::lock_guard<std::mutex> lock(mtx_2); // Lock for thread safety
+//         std::cout << "Client " << id << " has " << clnt.get_n_srvs() << " servers.\n";
+//     }
+// 
+//     std::string filename = "tmp_" + std::to_string(id);
+//     clnt.write_file(filename, "random data from client " + std::to_string(id) + "\n");
+// 
+//     {
+//         std::lock_guard<std::mutex> lock(mtx_2); // Lock for thread safety
+//         std::cout << "Client " << id << " read: " << clnt.read_file(filename) << "\n";
+//     }
+// }
+
 int main() {
     Server srv1;
     Server srv2;
@@ -45,6 +65,18 @@ int main() {
     std::vector<Server> srvs;
     srvs.push_back(srv1);
     srvs.push_back(srv2);
+
+    // const int num_clients = 5; // Number of clients to run concurrently
+    // std::vector<std::thread> threads;
+
+    // for (int i = 0; i < num_clients; ++i) {
+    //     threads.emplace_back(client_operations, i, std::ref(coord), std::ref(srvs));
+    // }
+
+    // // Join all threads
+    // for (auto& thread : threads) {
+    //     thread.join();
+    // }
 
     Client clnt(2, coord, srvs);
     std::cout << clnt.get_n_srvs() << "\n";
