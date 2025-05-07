@@ -1,3 +1,5 @@
+syntax="proto3";
+
 service Contact {
     rpc ContactCoordinator (Request) returns (Reply) {}
 }
@@ -7,5 +9,5 @@ message Request {
 }
 
 message Reply {
-    int server = 1;
+    int64 server = 1;
 }
