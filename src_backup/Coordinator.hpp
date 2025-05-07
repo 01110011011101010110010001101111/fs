@@ -3,6 +3,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <mutex>
 
 class Coordinator {
 public:
@@ -12,6 +13,7 @@ public:
 private:
     int n_srvs;
     std::unordered_map<std::string, int> file_server_data;
+    std::mutex mtx;
 };
 
 #endif // COORDINATOR_H

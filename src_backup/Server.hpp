@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 #include <sstream>
+#include <mutex>
 
 class Server {
 public:
@@ -21,6 +22,7 @@ private:
     Directory root;
     Directory* navigateTo(const std::string& path);
     std::vector<std::string> splitPath(const std::string& path);
+    std::mutex mtx;
 };
 
 #endif // SERVER_HPP
