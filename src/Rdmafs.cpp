@@ -246,10 +246,22 @@ int rdmafs_statfs(const char *path, struct statvfs *stbuf) {
 
 int rdmafs_backup_utimens(const char *path, const struct timespec ts[2],
 		       struct fuse_file_info*) {
-	/* don't use utime/utimes since they follow symlinks */
-	// if (utimensat(0, full_path(path).c_str(), ts, AT_SYMLINK_NOFOLLOW) == -1) return -errno;
-	// return 0;
-	return 0;
+	rdmafs::Path req;
+	rdmafs::Timespec reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	auto status = g_stub->Utimens(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		if (reply.return_code() == 0) {
+			ts[0] = reply.st_atim();
+			ts[1] = reply.st_mtim();
+			return 0;
+		} else {
+			return reply.return_code();
+		}
+	}
 }
 
 void* rdmafs_backup_init(fuse_conn_info*, fuse_config*) {
@@ -266,9 +278,9 @@ int rdmafs_backup_getattr(const char* path, struct stat* stbuf, fuse_file_info*)
 	rdmafs::Attr attr;
 	grpc::ClientContext ctx;
 	req.set_path(path);
-	auto status = g_stub->GetAttr(&ctx, req, &attr);
+	auto status = g_stub->Getattr(&ctx, req, &attr);
 	if (!status.ok()) {
-		return -errno;
+		return -EIO;
 	} else {
 		if (attr.return_code() == 0) {
 			memcpy(stbuf, attr.stat().c_str(), sizeof(struct stat));
@@ -280,81 +292,143 @@ int rdmafs_backup_getattr(const char* path, struct stat* stbuf, fuse_file_info*)
 }
 
 int rdmafs_backup_access(const char *path, int mask) {
-	if (access(full_path(path).c_str(), mask) == -1) return -errno;
-	return 0;
+	rdmafs::Accessrequest req;
+	rdmafs::Messagestatus reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	req.set_mask(mask);
+	auto status = g_stub->Access(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		return reply.return_code();
+	}
 }
 
 int rdmafs_backup_readlink(const char *path, char *buf, size_t size) {
-    int res;
-	if ( (res = readlink(full_path(path).c_str(), buf, size - 1)) == -1) return -errno;
-	buf[res] = '\0';
-	return 0;
+	rdmafs::Readlinkrequest req;
+	rdmafs::ReadlinkReply reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	req.set_size(static_cast<int32_t>(size));
+	auto status = g_stub->Readlink(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		if (reply.return_code() == 0) {
+			const std::string& data = reply.data();
+			size_t copy_len = std::min(size-1, data.size());
+			memcpy(buf, data.c_str(), copy_len);
+			buf[copy_len] = '\0';
+			return 0;
+		} else {
+			return reply.return_code();
+		}
+	}
 }
 
 int rdmafs_backup_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     off_t offset, struct fuse_file_info *fi,
     enum fuse_readdir_flags flags) {
-    DIR* dp = opendir(full_path(path).c_str());
-    if (!dp) return -errno;
-
-	dirent *de;
-    while ((de = readdir(dp))) {
-        struct stat st;
-        memset(&st, 0, sizeof(st));
-        st.st_ino = de->d_ino;
-        st.st_mode = de->d_type << 12;
-        // if (filler(buf, de->d_name, &st, 0, FUSE_FILL_DIR_DEFAULTS)) break;
-		if (filler(buf, de->d_name, &st, 0, FUSE_FILL_DIR_PLUS)) break;
-    }
-    closedir(dp);
-    return 0;
+	// offset ignored
+	rdmafs::Path req;
+	req.set_path(path);
+	rdmafs::Readdirreply reply;
+	grpc::ClientContext ctx;
+	auto status = g_stub->Readdir(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	}
+	if (reply.return_code() != 0) return reply.return_code();
+	for (const auto& entry : reply.entries()) {
+		struct stat st;
+		memset(&st, 0, sizeof(st));
+		st.st_ino = entry.ino();
+		st.st_mode = entry.mode();
+		if (filler(buf, entry.name().c_str(), &st, 0, FUSE_FILL_DIR_PLUS)) break;
+	}
+	return 0;
 }
 
 int rdmafs_backup_mknod(const char *path, mode_t mode, dev_t rdev) {
-	int res;
-
-	res = mknod_wrapper(AT_FDCWD, full_path(path).c_str(), NULL, mode, rdev);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	rdmafs::Mknodrequest req;
+	rdmafs::Messagestatus reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	req.set_mode(mode);
+	req.set_rdev(rdev);
+	auto status = g_stub->Mknod(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		return reply.return_code();
+	}
 }
 
 int rdmafs_backup_open(const char *path, struct fuse_file_info *fi) {
-    int64_t fh;
-	if ( (fh = open(full_path(path).c_str(), fi->flags)) == -1) return -errno;
-
-    /* Enable direct_io when open has flags O_DIRECT to enjoy the feature
-    parallel_direct_writes (i.e., to get a shared lock, not exclusive lock,
-    for writes to the same file). */
-	if (fi->flags & O_DIRECT) {
-		fi->direct_io = 1;
-		// fi->parallel_direct_writes = 1;
+	rdmafs::Openrequest req;
+	rdmafs::Openreply reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	req.set_flags(fi->flags);
+	auto status = g_stub->Open(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		if (reply.return_code() == 0) {
+			fi->fh = reply.fh();
+			if (fi->flags & O_DIRECT) {
+				fi->direct_io = 1;
+			}
+			return 0;
+		} else {
+			return reply.return_code();
+		}
 	}
-
-	fi->fh = fh;
-	return 0;
 }
 
 int rdmafs_backup_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
-    int64_t fh;
-	if ( (fh = open(full_path(path).c_str(), fi->flags, mode)) == -1) return -errno;
-
-    /* Enable direct_io when open has flags O_DIRECT to enjoy the feature
-    parallel_direct_writes (i.e., to get a shared lock, not exclusive lock,
-    for writes to the same file). */
-	if (fi->flags & O_DIRECT) {
-		fi->direct_io = 1;
-		// fi->parallel_direct_writes = 1;
+	rdmafs::Createrequest req;
+	rdmafs::Openreply reply;
+	grpc::ClientContext ctx;
+	req.set_path(path);
+	req.set_flags(fi->flags);
+	req.set_mode(mode);
+	auto status = g_stub->Create(&ctx, req, &reply);
+	if (!status.ok()) {
+		return -EIO;
+	} else {
+		if (reply.return_code() == 0) {
+			fi->fh = reply.fh();
+			if (fi->flags & O_DIRECT) {
+				fi->direct_io = 1;
+			}
+			return 0;
+		} else {
+			return reply.return_code();
+		}
 	}
-
-	fi->fh = fh;
-	return 0;
 }
 
 int rdmafs_backup_read(const char *path, char *buf, size_t size, off_t offset,
     struct fuse_file_info *fi) {
-    int fd;
+    rdmafs::Readrequest req;
+    req.set_path(path);
+    req.set_offset(offset);
+    req.set_size(size);
+    if (fi) req.set_fh(fi->fh());
+    rdmafs::Readreply reply;
+    grpc::ClientContext ctx;
+    auto status = g_stub->Read(&ctx, req, &reply);
+    if (!status.ok()) return -EIO;
+    int ret = reply.return_code();
+    if (ret != 0) return ret;
+    memcpy(buf, reply.data().data(), ret);
+    return ret;
+
+
+
+
     if(!fi) fd = open(full_path(path).c_str(), O_RDONLY);
     else fd = fi->fh;
 

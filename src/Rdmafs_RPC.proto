@@ -12,22 +12,47 @@ message Dirent {
   uint64 ino = 2;
   uint32 mode = 3;
 }
-message ReaddirReply {
-  int32 return_code = 1
+
+message Accessrequest {
+  string path = 1;
+  int32 mask = 2;
+}
+
+message Readlinkrequest {
+  string path = 1;
+  uint32 size = 2;
+}
+
+message Readlinkreply {
+  string data = 1;
+  int32 return_code = 2;
+}
+
+message Mknodrequest {
+  string path = 1;
+  uint32 mode = 2;
+  uint64 rdev = 3;
+}
+
+message Readdirreply {
+  int32 return_code = 1;
   repeated Dirent entries = 2;
 }
 
-message OpenRequest     { string path   = 1; int32 flags = 2; }
-message OpenReply       { uint64 fh     = 1; }                // opaque handle
+message Openrequest     { string path   = 1; int32 flags = 2; }
+message Openreply       { int32 return_code = 1; uint64 fh     = 2; }                // opaque handle
 
-message ReadRequest     { uint64 fh     = 1; uint64 off  = 2; uint32 size = 3; }
-message ReadChunk       { bytes  data   = 1; }                // streamed back
+message Createrequest {string path = 1; int32 flags = 2; uint32 mode = 3;}
+
+message Readrequest     { optional uint64 fh     = 1; uint64 offset  = 2; uint32 size = 3; string path=4; }
+message Readreply       { bytes  data   = 1; int32 return_code = 2;}
+
 
 message WriteChunk      { uint64 fh     = 1; uint64 off  = 2; bytes data = 3; }
 message MessageStatus          { int32  return_code  = 1; }                // 0 on success, -errno otherwise
 message Timespec {
-  int64 tv_spec = 1;
-  int64 tv_nsec = 2;
+  int64 st_atim = 1;
+  int64 st_mtim = 2;
 }
 
 message HelloRequest {
@@ -41,16 +66,16 @@ message HelloReply {
 service Backuper {
   rpc SayHello (HelloRequest) returns (HelloReply);
   rpc Utimens (Path)             returns (Timespec);
-  rpc GetAttr (Path)             returns (Attr);
-  rpc Access  (Path)             returns (MessageStatus);
-  rpc ReadLink (Path)            returns (ReadlinkReply);
-  rpc Readdir (Path)             returns (ReaddirReply);
-  rpc Open    (OpenRequest)      returns (OpenReply);
-  rpc Create  (OpenRequest)      returns (OpenReply);
-  rpc Read    (ReadRequest)      returns (stream ReadChunk);
-  rpc Write   (stream WriteChunk)returns (MessageStatus);
-  rpc Release (OpenReply)        returns (MessageStatus);
-  rpc Mkdir   (Path)             returns (MessageStatus);
-  rpc Unlink  (Path)             returns (MessageStatus);
-  // …add the rest as you migrate calls
+  rpc Access  (Accessrequest)             returns (Messagestatus);
+  rpc Getattr (Path)             returns (Attr);
+  rpc Readlink (Path)            returns (Readlinkreply);
+  rpc Readdir (Path)             returns (Readdirreply);
+  rpc Mknod (Mknodrequest)  returns (Messagestatus);
+  rpc Open    (Openrequest)      returns (Openreply);
+  rpc Create  (Openrequest)      returns (Openreply);
+  rpc Read    (Readrequest)      returns (Readreply);
+  rpc Write   (stream WriteChunk)returns (Messagestatus);
+  rpc Release (Openreply)        returns (Messagestatus);
+  rpc Mkdir   (Path)             returns (Messagestatus);
+  rpc Unlink  (Path)             returns (Messagestatus);
 }
