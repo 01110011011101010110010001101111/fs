@@ -62,10 +62,10 @@ target_link_libraries(rdmafs_proto
 target_include_directories(rdmafs_proto
   PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-add_executable(rdmafs_coordinator Rdmafs_Coordinator.cpp)
-target_link_libraries(rdmafs_coordinator
+add_executable(rdmafs_backuper Rdmafs_Backuper.cpp)
+target_link_libraries(rdmafs_backuper
 PRIVATE rdmafs_proto gRPC::grpc++ protobuf::libprotobuf utf8_range::utf8_range utf8_range::utf8_validity pthread ${FUSE3_LIBRARIES} absl::cord absl::strings)
-target_include_directories(rdmafs_coordinator
+target_include_directories(rdmafs_backuper
 PRIVATE ${FUSE3_INCLUDE_DIRS})
 
 add_custom_target(generate_proto DEPENDS ${GENERATED_SRCS})
