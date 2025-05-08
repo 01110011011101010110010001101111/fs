@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package rdmafs;
+
+option csharp_namespace = "RdmaFs";
+
+message Path            { string path   = 1; }                // “/foo/bar”
+message Attr            { bytes  stat   = 1; }                // struct stat in wire format
+message Empty           {}
+
+message OpenRequest     { string path   = 1; int32 flags = 2; }
+message OpenReply       { uint64 fh     = 1; }                // opaque handle
+
+message ReadRequest     { uint64 fh     = 1; uint64 off  = 2; uint32 size = 3; }
+message ReadChunk       { bytes  data   = 1; }                // streamed back
+
+message WriteChunk      { uint64 fh     = 1; uint64 off  = 2; bytes data = 3; }
+message MessageStatus          { int32  error_code  = 1; }                // 0 on success, -errno otherwise
+
+service Coordinator {
+  rpc GetAttr (Path)             returns (Attr);
+  rpc Access  (Path)             returns (MessageStatus);
+  rpc Open    (OpenRequest)      returns (OpenReply);
+  rpc Create  (OpenRequest)      returns (OpenReply);
+  rpc Read    (ReadRequest)      returns (stream ReadChunk);
+  rpc Write   (stream WriteChunk)returns (MessageStatus);
+  rpc Release (OpenReply)        returns (MessageStatus);
+  rpc Mkdir   (Path)             returns (MessageStatus);
+  rpc Unlink  (Path)             returns (MessageStatus);
+  // …add the rest as you migrate calls
+}

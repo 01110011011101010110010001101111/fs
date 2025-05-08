@@ -20,7 +20,7 @@
 #endif
 
 // const std::string base_path = "/home/alexhu/orcd/c7/pool/test1";
-const std::string base_path = "/home/alex/workspace/fs_mount1";
+std::string base_path = "/home/alex/workspace/fs_mount1";
 
 inline std::string full_path(const char*path){
 	std::string result = base_path;
@@ -241,6 +241,14 @@ int rdmafs_statfs(const char *path, struct statvfs *stbuf) {
 }
 
 int main(int argc, char* argv[]) {
+	if (argc > 1) {
+		base_path = argv[1];
+		for (int i = 0; i < argc - 1; i++) {
+			argv[i] = argv[i + 1];
+		}
+		argc--;
+	}
+
     fuse_operations oper {};
     oper.init = rdmafs_init;
     oper.getattr = rdmafs_getattr;
