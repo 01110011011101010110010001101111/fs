@@ -1,0 +1,10 @@
+[write-test-direct]
+filename=/home/alex/workspace/fs/src/mount1/testfile1
+rw=write
+bs=4k
+size=512M
+ioengine=sync
+direct=1
+numjobs=1
+runtime=60
+group_reporting
