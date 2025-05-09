@@ -16,7 +16,8 @@ public:
 private:
     int n_srvs;
     std::unordered_map<std::string, int> file_server_data;
-    std::mutex mtx;
+    // std::mutex mtx;
+    bool is_primary;
 };
 
 #endif // COORDINATOR_H

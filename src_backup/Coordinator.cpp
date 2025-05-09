@@ -13,7 +13,7 @@ Coordinator::Coordinator (int n_srvs): n_srvs(n_srvs) {}
 
 int Coordinator::requestFile(const std::string& filename) {
     // locks, will automatically unlock when out of scope
-    std::lock_guard<std::mutex> lock(mtx);
+    // std::lock_guard<std::mutex> lock(mtx);
 
     auto it = file_server_data.find(filename);
     if (it != file_server_data.end()) {

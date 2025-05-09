@@ -10,7 +10,6 @@
 
 class Server {
 public:
-
     Server() : root() {}
     Server(const Server& other)
         : root(other.root) {}
@@ -35,6 +34,7 @@ private:
     Directory* navigateTo(const std::string& path);
     std::vector<std::string> splitPath(const std::string& path);
     std::mutex mtx;
+    bool is_primary;
 };
 
 #endif // SERVER_HPP
