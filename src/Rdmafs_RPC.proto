@@ -25,7 +25,7 @@ message Readlinkrequest {
 }
 
 message Readlinkreply {
-  string data = 1;
+  bytes data = 1;
   int32 return_code = 2;
 }
 
@@ -125,6 +125,11 @@ message Helloreply {
   string message = 1;
 }
 
+message Fsyncrequest {
+  uint64 fh      = 1;
+  bool   isdatasync = 2;
+}
+
 service Backuper {
   rpc Hello (Hellorequest) returns (Helloreply);
   rpc Utimens (Utimensrequest)             returns (Messagestatus);
@@ -148,4 +153,6 @@ service Backuper {
   rpc Truncate(Truncaterequest) returns (Messagestatus);
   rpc Release (Releaserequest)        returns (Messagestatus);
   rpc Statfs (Statfsrequest) returns (Statfsreply);
+  rpc Fsync (Fsyncrequest) returns (Messagestatus);
+  rpc Flush (Releaserequest) returns (Messagestatus);
 }

@@ -48,7 +48,7 @@ void* rdmafs_init(fuse_conn_info*, fuse_config*) {
     /**
      * cfg->direct_io = 1;
      * cfg->parallel_direct_writes = 1;
-     */
+     */	
     return nullptr;
 }
 
@@ -268,6 +268,20 @@ void* rdmafs_backup_init(fuse_conn_info*, fuse_config*) {
      * cfg->direct_io = 1;
      * cfg->parallel_direct_writes = 1;
      */	
+	auto channel = grpc::CreateChannel("0.0.0.0:50051", grpc::InsecureChannelCredentials());
+	g_stub = rdmafs::Backuper::NewStub(channel);
+
+	rdmafs::Hellorequest req;
+	rdmafs::Helloreply reply;
+	req.set_name("client");
+	grpc::ClientContext ctx;
+	auto status = g_stub->Hello(&ctx, req, &reply);
+	if (!status.ok()) {
+		fprintf(stderr, "FATAL: gRPC handshake failed: %s\n",
+                status.error_message().c_str());
+        fuse_exit(fuse_get_context()->fuse);   
+		return nullptr;
+	}
     return nullptr;
 }
 
@@ -314,14 +328,18 @@ int rdmafs_backup_readlink(const char *path, char *buf, size_t size) {
 	if (!status.ok()) {
 		return -EIO;
 	} else {
-		if (reply.return_code() == 0) {
-			const std::string& data = reply.data();
-			size_t copy_len = std::min(size-1, data.size());
-			memcpy(buf, data.c_str(), copy_len);
-			buf[copy_len] = '\0';
-			return 0;
-		} else {
+		if (reply.return_code() < 0) {
 			return reply.return_code();
+		} else {
+			if (size == 0) {
+				return reply.return_code();
+			}
+			size_t copy_len = std::min(size, reply.data().size());
+			memcpy(buf, reply.data().data(), copy_len);
+			if (copy_len < size) {
+				buf[copy_len] = '\0';
+			}
+			return 0;
 		}
 	}
 }
@@ -435,6 +453,7 @@ int rdmafs_backup_write(const char *path, const char *buf, size_t size,
 	req.set_data(buf, size);
 	req.set_offset(offset);
 	req.set_size(size);
+	if (fi) req.set_fh(fi->fh);
 	auto status = g_stub->Write(&ctx, req, &rep);
 	if (!status.ok()) return -EIO;
 	return rep.return_code();
@@ -575,6 +594,27 @@ int rdmafs_backup_statfs(const char *path, struct statvfs *stbuf) {
 	return 0;
 }
 
+int rdmafs_backup_fsync(const char *path, int isdatasync, struct fuse_file_info *fi) {
+	rdmafs::Fsyncrequest req;
+	rdmafs::Messagestatus reply;
+	grpc::ClientContext ctx;
+	req.set_fh(fi->fh);
+	req.set_isdatasync(isdatasync);
+	auto status = g_stub->Fsync(&ctx, req, &reply);
+	if (!status.ok()) return -EIO;
+	return reply.return_code();
+}
+
+int rdmafs_backup_flush(const char* /*path*/, struct fuse_file_info* fi) {
+    rdmafs::Releaserequest req;
+    rdmafs::Messagestatus rep;
+    grpc::ClientContext ctx;
+    req.set_fh(fi->fh);
+    auto status = g_stub->Flush(&ctx, req, &rep);
+    if (!status.ok()) return -EIO;
+    return rep.return_code();
+}
+
 
 int main(int argc, char* argv[]) {
 	// used when running local FUSE
@@ -585,18 +625,6 @@ int main(int argc, char* argv[]) {
 	// 	}
 	// 	argc--;
 	// }
-	auto channel = grpc::CreateChannel("0.0.0.0:50051", grpc::InsecureChannelCredentials());
-	g_stub = rdmafs::Backuper::NewStub(channel);
-
-	rdmafs::Hellorequest req;
-	rdmafs::Helloreply reply;
-	req.set_name("client");
-	grpc::ClientContext ctx;
-	auto status = g_stub->Hello(&ctx, req, &reply);
-	if (!status.ok()) {
-		return EIO;
-	}
-	std::cout << "Server's reply: " << reply.message() << std::endl;
 
     fuse_operations oper {};
     // oper.init = rdmafs_init;
@@ -641,5 +669,7 @@ int main(int argc, char* argv[]) {
 	oper.statfs = rdmafs_backup_statfs;
 	oper.release = rdmafs_backup_release;
 	oper.utimens = rdmafs_backup_utimens;
+	oper.fsync = rdmafs_backup_fsync;
+	oper.flush = rdmafs_backup_flush;
     return fuse_main(argc, argv, &oper, nullptr);
 }

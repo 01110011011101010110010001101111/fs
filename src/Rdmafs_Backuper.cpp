@@ -46,6 +46,7 @@ class BackuperServiceImpl final : public rdmafs::Backuper::Service {
 
   grpc::Status Hello(grpc::ServerContext*, const rdmafs::Hellorequest* req,
                      rdmafs::Helloreply* reply) override {
+    
     reply->set_message("Hello, " + req->name() + "!");
     return grpc::Status::OK;
   }
@@ -93,26 +94,27 @@ class BackuperServiceImpl final : public rdmafs::Backuper::Service {
   grpc::Status Readlink(grpc::ServerContext*, const rdmafs::Readlinkrequest* req,
                         rdmafs::Readlinkreply* reply) override {
     std::lock_guard<std::mutex> lock(global_mutex_);
-    size_t bufsize = static_cast<size_t>(req->size());
-    if (bufsize==0 || bufsize>PATH_MAX) {
+    size_t bufsize = static_cast<size_t>(req->size() == 0 ? PATH_MAX : req->size());
+    if (bufsize>PATH_MAX+1) {
       reply->set_return_code(-EINVAL);
       return grpc::Status::OK;
     }
     std::vector<char> buf(bufsize);
-    int res = readlink(full_path(req->path()).c_str(), buf.data(), bufsize-1);
-    if (res == -1) {
+    ssize_t n = readlink(full_path(req->path()).c_str(), buf.data(), bufsize);
+    if (n == -1) {
       reply->set_return_code(-errno);
       return grpc::Status::OK;
     }
-    buf[std::min(static_cast<size_t>(res), bufsize-1)] = '\0';
-    reply->set_data(std::string{buf.data()});
-    reply->set_return_code(0);
+    // buf[std::min(static_cast<size_t>(n), bufsize-1)] = '\0';
+    reply->set_data(buf.data(), std::min(static_cast<size_t>(n), bufsize));
+    reply->set_return_code(static_cast<int32_t>(n));
     return grpc::Status::OK;
   }
 
   grpc::Status Readdir(grpc::ServerContext*, const rdmafs::Path* req, rdmafs::Readdirreply* reply) {
     std::lock_guard<std::mutex> lock(global_mutex_);
-    DIR* dp = opendir(full_path(req->path()).c_str());
+    std::string path = full_path(req->path());
+    DIR* dp = opendir(path.c_str());
     if (!dp) {
       reply->set_return_code(-errno);
       return grpc::Status::OK;
@@ -373,6 +375,33 @@ class BackuperServiceImpl final : public rdmafs::Backuper::Service {
     rep->set_f_fsid(buf.f_fsid);
     rep->set_f_flag(buf.f_flag);
     rep->set_f_namemax(buf.f_namemax);
+    return grpc::Status::OK;
+  }
+
+  grpc::Status Fsync(grpc::ServerContext* context,
+                     const rdmafs::Fsyncrequest* req,
+                     rdmafs::Messagestatus* reply) override {
+    std::lock_guard<std::mutex> lock(global_mutex_);
+    ssize_t return_code;
+    if (req->isdatasync()) {
+      return_code = fdatasync(req->fh());
+    } else {
+      return_code = fsync(req->fh());
+    }
+    if (return_code == -1) {
+      reply->set_return_code(-errno);
+    } else {
+      reply->set_return_code(return_code);
+    }
+    return grpc::Status::OK;
+  }
+
+  grpc::Status Flush(grpc::ServerContext*,
+                   const rdmafs::Releaserequest* req,
+                   rdmafs::Messagestatus* rep) override {
+    std::lock_guard<std::mutex> lk(global_mutex_);
+    ssize_t rc = close(dup(req->fh()));
+    rep->set_return_code(rc == -1 ? -errno : 0);
     return grpc::Status::OK;
   }
 
