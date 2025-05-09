@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "google/protobuf/timestamp.proto";
 
 package rdmafs;
 
@@ -47,35 +48,104 @@ message Createrequest {string path = 1; int32 flags = 2; uint32 mode = 3;}
 message Readrequest     { optional uint64 fh     = 1; uint64 offset  = 2; uint32 size = 3; string path=4; }
 message Readreply       { bytes  data   = 1; int32 return_code = 2;}
 
-
-message WriteChunk      { uint64 fh     = 1; uint64 off  = 2; bytes data = 3; }
-message MessageStatus          { int32  return_code  = 1; }                // 0 on success, -errno otherwise
-message Timespec {
-  int64 st_atim = 1;
-  int64 st_mtim = 2;
+message Writerequest {
+  string path = 1;
+  bytes data = 2;
+  uint64 offset = 3;
+  uint32 size = 4;
+  optional uint64 fh = 5;
 }
 
-message HelloRequest {
+message Writereply {
+  int32 return_code = 1;
+}
+
+message Mkdirrequest {
+  string path = 1;
+  uint32 mode = 2;
+}
+
+message Symlinkrequest {
+  string from = 1;
+  string to = 2;
+}
+
+message Chmodrequest {
+  string path = 1;
+  uint32 mode = 2;
+}
+
+message Chownrequest {
+  string path = 1;
+  uint32 uid = 2;
+  uint32 gid = 3;
+}
+
+message Truncaterequest {
+  string path = 1;
+  uint64 size = 2;
+  optional uint64 fh = 3;
+}
+
+message Releaserequest {
+  uint64 fh = 1;
+}
+
+message Statfsrequest {
+  string path = 1;
+}
+
+message Statfsreply {
+  int32 return_code = 1;
+  uint64 f_bsize = 2;
+  uint64 f_frsize = 3;
+  uint64 f_blocks = 4;
+  uint64 f_bfree = 5;
+  uint64 f_bavail = 6;
+  uint64 f_files = 7;
+  uint64 f_ffree = 8;
+  uint64 f_favail = 9;
+  uint64 f_fsid = 10;
+  uint64 f_flag = 11;
+  uint64 f_namemax = 12;
+}
+
+message Messagestatus { int32  return_code  = 1; }
+message Utimensrequest {
+  string path = 1;
+  google.protobuf.Timestamp access_time = 2;
+  google.protobuf.Timestamp modify_time = 3;
+}
+
+message Hellorequest {
   string name = 1;
 }
 
-message HelloReply {
+message Helloreply {
   string message = 1;
 }
 
 service Backuper {
-  rpc SayHello (HelloRequest) returns (HelloReply);
-  rpc Utimens (Path)             returns (Timespec);
+  rpc Hello (Hellorequest) returns (Helloreply);
+  rpc Utimens (Utimensrequest)             returns (Messagestatus);
   rpc Access  (Accessrequest)             returns (Messagestatus);
   rpc Getattr (Path)             returns (Attr);
-  rpc Readlink (Path)            returns (Readlinkreply);
+  rpc Readlink (Readlinkrequest)            returns (Readlinkreply);
   rpc Readdir (Path)             returns (Readdirreply);
   rpc Mknod (Mknodrequest)  returns (Messagestatus);
   rpc Open    (Openrequest)      returns (Openreply);
-  rpc Create  (Openrequest)      returns (Openreply);
+  rpc Create  (Createrequest)      returns (Openreply);
   rpc Read    (Readrequest)      returns (Readreply);
-  rpc Write   (stream WriteChunk)returns (Messagestatus);
-  rpc Release (Openreply)        returns (Messagestatus);
-  rpc Mkdir   (Path)             returns (Messagestatus);
-  rpc Unlink  (Path)             returns (Messagestatus);
+  rpc Write   (Writerequest) returns (Writereply);
+  rpc Mkdir (Mkdirrequest) returns (Messagestatus);
+  rpc Unlink (Path) returns (Messagestatus);
+  rpc Rmdir (Path) returns (Messagestatus);
+  rpc Symlink (Symlinkrequest) returns (Messagestatus);
+  rpc Rename (Symlinkrequest) returns (Messagestatus);
+  rpc Link(Symlinkrequest) returns (Messagestatus);
+  rpc Chmod(Chmodrequest) returns (Messagestatus);
+  rpc Chown(Chownrequest) returns (Messagestatus);
+  rpc Truncate(Truncaterequest) returns (Messagestatus);
+  rpc Release (Releaserequest)        returns (Messagestatus);
+  rpc Statfs (Statfsrequest) returns (Statfsreply);
 }

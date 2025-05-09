@@ -25,7 +25,6 @@ set(CMAKE_BUILD_TYPE Release)
 find_package(Protobuf REQUIRED)
 find_package(gRPC REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(absl CONFIG REQUIRED)
 find_package(utf8_range CONFIG REQUIRED)
 
 pkg_check_modules(FUSE3 REQUIRED fuse3)
@@ -64,7 +63,7 @@ target_include_directories(rdmafs_proto
 
 add_executable(rdmafs_backuper Rdmafs_Backuper.cpp)
 target_link_libraries(rdmafs_backuper
-PRIVATE rdmafs_proto gRPC::grpc++ protobuf::libprotobuf utf8_range::utf8_range utf8_range::utf8_validity pthread ${FUSE3_LIBRARIES} absl::cord absl::strings)
+PRIVATE rdmafs_proto gRPC::grpc++ protobuf::libprotobuf pthread ${FUSE3_LIBRARIES})
 target_include_directories(rdmafs_backuper
 PRIVATE ${FUSE3_INCLUDE_DIRS})
 
@@ -72,6 +71,6 @@ add_custom_target(generate_proto DEPENDS ${GENERATED_SRCS})
 
 add_executable(rdmafs Rdmafs.cpp)
 target_link_libraries(rdmafs
-PRIVATE rdmafs_proto gRPC::grpc++ pthread ${FUSE3_LIBRARIES})
+PRIVATE rdmafs_proto gRPC::grpc++ protobuf::libprotobuf pthread ${FUSE3_LIBRARIES})
 target_include_directories(rdmafs
 PRIVATE ${FUSE3_INCLUDE_DIRS})
