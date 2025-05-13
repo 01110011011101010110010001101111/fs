@@ -1,8 +1,7 @@
 /*
  * This is a RDMA server side code. 
  *
- * Author: Animesh Trivedi 
- *         atrivedi@apache.org 
+ * Based on code by Animesh Trivedi (atrivedi@apache.org)
  *
  * TODO: Cleanup previously allocated resources in case of an error condition
  */
@@ -273,6 +272,23 @@ static int accept_client_connection()
 	return ret;
 }
 
+// NOTE: is this besides the point of rdma? possibly... 
+// but does it work? indeed...
+void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
+    FILE *file = fopen(filename, "wb"); // Open file for writing in binary mode
+    if (!file) {
+        perror("Failed to open file for writing");
+        return;
+    }
+
+    size_t written = fwrite(buffer, 1, length, file); // Write the buffer to the file
+    if (written != length) {
+        perror("Failed to write complete buffer to file");
+    }
+
+    fclose(file); // Close the file
+}
+
 /* This function sends server side buffer metadata to the connected client */
 static int send_server_metadata_to_client() 
 {
@@ -353,6 +369,7 @@ static int send_server_metadata_to_client()
 	       return ret;
        }
        debug("Local buffer metadata has been sent to the client \n");
+       write_buffer_to_file(server_buffer_mr->addr, client_metadata_attr.length, "output_buffer.bin");
        return 0;
 }
 
@@ -428,188 +445,6 @@ void usage()
 	printf("(default port is %d)\n", DEFAULT_RDMA_PORT);
 	exit(1);
 }
-
-void process_client_request(char *buffer);
-#define BUFFER_SIZE 1024
-
-// Assuming client_metadata_attr is a structure
-typedef struct {
-    char data[BUFFER_SIZE]; // Example member to hold received data
-    // Other members...
-} client_metadata_t;
-
-client_metadata_t client_metadata_attr_; // Declare the structure
-
-// In your read_client_data function
-int read_client_data(char *buffer, size_t buffer_size) {
-    struct ibv_wc wc; // Work completion structure
-    int ret;
-
-    // Wait for the completion of the receive operation
-    while (1) {
-        // Poll for completion
-        ret = ibv_poll_cq(client_qp->send_cq, 1, &wc);
-        if (ret < 0) {
-            rdma_error("Failed to poll completion queue, errno: %d\n", -errno);
-            return -errno;
-        }
-
-        // Check if we have a completion
-        if (ret > 0) {
-            // Check if the completion is successful
-            if (wc.status == IBV_WC_SUCCESS) {
-                // Copy the received data to the provided buffer
-                if (wc.byte_len > buffer_size) {
-                    rdma_error("Received data exceeds buffer size\n");
-                    return -EINVAL;
-                }
-                // Assuming client_metadata_attr.data holds the received data
-                memcpy(buffer, client_metadata_attr_.data, wc.byte_len);
-                return wc.byte_len; // Return the number of bytes received
-            } else {
-                rdma_error("Receive failed with status: %s\n", ibv_wc_status_str(wc.status));
-                return -EIO; // Input/output error
-            }
-        }
-
-        // Optionally, you can implement a timeout mechanism here
-    }
-
-    return 0; // Should not reach here
-}
-
-
-// // Function to read data from the client
-// int read_client_data(char *buffer, size_t buffer_size) {
-//     struct ibv_wc wc; // Work completion structure
-//     int ret;
-// 
-//     // Wait for the completion of the receive operation
-//     while (1) {
-//         // Poll for completion
-//         ret = ibv_poll_cq(client_qp->send_cq, 1, &wc);
-//         if (ret < 0) {
-//             rdma_error("Failed to poll completion queue, errno: %d\n", -errno);
-//             return -errno;
-//         }
-// 
-//         // Check if we have a completion
-//         if (ret > 0) {
-//             // Check if the completion is successful
-//             if (wc.status == IBV_WC_SUCCESS) {
-//                 // Copy the received data to the provided buffer
-//                 if (wc.byte_len > buffer_size) {
-//                     rdma_error("Received data exceeds buffer size\n");
-//                     return -EINVAL;
-//                 }
-//                 memcpy(buffer, (char *)client_metadata_attr, wc.byte_len);
-//                 return wc.byte_len; // Return the number of bytes received
-//             } else {
-//                 rdma_error("Receive failed with status: %s\n", ibv_wc_status_str(wc.status));
-//                 return -EIO; // Input/output error
-//             }
-//         }
-// 
-//         // Optionally, you can implement a timeout mechanism here
-//         // For example, you can use a sleep or a timeout counter
-//         // to avoid busy waiting.
-//     }
-// 
-//     return 0; // Should not reach here
-// }
-
-// int main(int argc, char **argv)
-// {
-//     int ret, option;
-//     struct sockaddr_in server_sockaddr;
-//     bzero(&server_sockaddr, sizeof server_sockaddr);
-//     server_sockaddr.sin_family = AF_INET; /* standard IP NET address */
-//     server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY); /* passed address */
-// 
-//     // Parse Command Line Arguments
-//     while ((option = getopt(argc, argv, "a:p:")) != -1) {
-//         switch (option) {
-//             case 'a':
-//                 ret = get_addr(optarg, (struct sockaddr*) &server_sockaddr);
-//                 if (ret) {
-//                     rdma_error("Invalid IP \n");
-//                     return ret;
-//                 }
-//                 break;
-//             case 'p':
-//                 server_sockaddr.sin_port = htons(strtol(optarg, NULL, 0));
-//                 break;
-//             default:
-//                 usage();
-//                 break;
-//         }
-//     }
-//     if (!server_sockaddr.sin_port) {
-//         server_sockaddr.sin_port = htons(DEFAULT_RDMA_PORT); /* use default port */
-//     }
-// 
-//     ret = start_rdma_server(&server_sockaddr);
-//     if (ret) {
-//         rdma_error("RDMA server failed to start cleanly, ret = %d \n", ret);
-//         return ret;
-//     }
-// 
-//     ret = setup_client_resources();
-//     if (ret) {
-//         rdma_error("Failed to setup client resources, ret = %d \n", ret);
-//         return ret;
-//     }
-// 
-//     // Accept client connection
-//     while (1) {
-//         ret = accept_client_connection();
-//         if (ret) {
-//             rdma_error("Failed to handle client cleanly, ret = %d \n", ret);
-//             continue; // Continue to accept new clients
-//         }
-// 
-//         // Buffer to hold incoming data
-//         char buffer[BUFFER_SIZE];
-//         memset(buffer, 0, BUFFER_SIZE);
-// 
-//         // Read data from the client
-//         ret = read_client_data(buffer, BUFFER_SIZE); // Implement this function
-//         if (ret < 0) {
-//             rdma_error("Failed to read data from client, ret = %d \n", ret);
-//             continue; // Handle error and continue
-//         }
-// 
-//         // Process the client request
-//         process_client_request(buffer);
-// 
-//         ret = send_server_metadata_to_client();
-//         if (ret) {
-//             rdma_error("Failed to send server metadata to the client, ret = %d \n", ret);
-//             return ret;
-//         }
-// 
-// 
-//         // // Optionally send a response back to the client
-//         // ret = send_response_to_client(); // Implement this function
-//         // if (ret) {
-//         //     rdma_error("Failed to send response to client, ret = %d \n", ret);
-//         // }
-//     }
-// 
-//     ret = disconnect_and_cleanup();
-//     if (ret) {
-//         rdma_error("Failed to clean up resources properly, ret = %d \n", ret);
-//         return ret;
-//     }
-//     return 0;
-// }
-// 
-// void process_client_request(char *buffer) {
-//     // Example: Process the input data
-//     // You can implement file system operations here based on the content of 'buffer'
-//     printf("Received request: %s\n", buffer);
-//     // Implement file system operations based on the request
-// }
 
 int main(int argc, char **argv) 
 {
