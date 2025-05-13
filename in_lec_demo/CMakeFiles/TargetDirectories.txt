@@ -1,0 +1,4 @@
+/home/dubdub/distr_proj/fs/in_lec_demo/CMakeFiles/rdma_server.dir
+/home/dubdub/distr_proj/fs/in_lec_demo/CMakeFiles/demo.dir
+/home/dubdub/distr_proj/fs/in_lec_demo/CMakeFiles/edit_cache.dir
+/home/dubdub/distr_proj/fs/in_lec_demo/CMakeFiles/rebuild_cache.dir
