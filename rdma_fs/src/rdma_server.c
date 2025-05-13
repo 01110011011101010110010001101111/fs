@@ -275,7 +275,11 @@ static int accept_client_connection()
 // NOTE: is this besides the point of rdma? possibly... 
 // but does it work? indeed...
 void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
-    FILE *file = fopen(filename, "wb"); // Open file for writing in binary mode
+    // real fileanem
+    char filename_actual[256];
+    snprintf(filename_actual, sizeof(filename_actual), "output_buffer_%ld_%d.bin", time(NULL), rand());
+
+    FILE *file = fopen(filename_actual, "wb"); // Open file for writing in binary mode
     if (!file) {
         perror("Failed to open file for writing");
         return;
