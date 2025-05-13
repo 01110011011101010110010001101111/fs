@@ -1,0 +1,4 @@
+/home/genericp3rson/Developer/6/project/fs/rdma_fs/CMakeFiles/rdma_server.dir
+/home/genericp3rson/Developer/6/project/fs/rdma_fs/CMakeFiles/rdma_client.dir
+/home/genericp3rson/Developer/6/project/fs/rdma_fs/CMakeFiles/edit_cache.dir
+/home/genericp3rson/Developer/6/project/fs/rdma_fs/CMakeFiles/rebuild_cache.dir

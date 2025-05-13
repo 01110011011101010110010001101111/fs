@@ -272,14 +272,41 @@ static int accept_client_connection()
 	return ret;
 }
 
+#define FILENAME_SIZE 5
+#define LOCATION "tmp/"
+
 // NOTE: is this besides the point of rdma? possibly... 
 // but does it work? indeed...
 void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
     // real fileanem
-    char filename_actual[256];
-    snprintf(filename_actual, sizeof(filename_actual), "output_buffer_%ld_%d.bin", time(NULL), rand());
+    // hacky grab the first FILENAME_SIZE of the message to be the filename
+    printf("BUF: %s\n", buffer);
+    char *charBuff = buffer;
+    char filename_actual[FILENAME_SIZE+1];
+    // // snprintf(filename_actual, sizeof(filename_actual), "output_buffer_%ld_%d.bin", time(NULL), rand());
+    // // strncpy(filename_actual, buffer, FILENAME_SIZE);
+    // // filename_actual[FILENAME_SIZE] = '\0';
+    size_t i = 0;
+    printf("BUF: %s%s%s\n", buffer);
+    // if (strlen(buffer) == 0) return;
+    while (i < FILENAME_SIZE && charBuff[i] != '\n' && charBuff[i] != '\0') {
+    	filename_actual[i] = charBuff[i];
+        i++;
+    }
+    printf("%d = i \n", i);
+    filename_actual[i] = '\0';
 
-    FILE *file = fopen(filename_actual, "wb"); // Open file for writing in binary mode
+    if (filename_actual[i] == '\n') i++;
+
+    if (length > i) {
+    	memmove(charBuff, charBuff + i, length - i + 1);
+    } else {charBuff[0] = '\0';}
+
+    char prefixedPath[i + strlen(LOCATION)];
+
+    snprintf(prefixedPath, sizeof(prefixedPath), "%s%s", LOCATION, filename_actual);
+    // printf("PATH: %s\n", prefixedPath);
+    FILE *file = fopen("tmp.c", "wb"); // Open file for writing in binary mode
     if (!file) {
         perror("Failed to open file for writing");
         return;
@@ -292,6 +319,25 @@ void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
 
     fclose(file); // Close the file
 }
+
+// void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
+//     // real fileanem
+//     char filename_actual[256];
+//     snprintf(filename_actual, sizeof(filename_actual), "output_buffer_%ld_%d.bin", time(NULL), rand());
+// 
+//     FILE *file = fopen(filename_actual, "wb"); // Open file for writing in binary mode
+//     if (!file) {
+//         perror("Failed to open file for writing");
+//         return;
+//     }
+// 
+//     size_t written = fwrite(buffer, 1, length, file); // Write the buffer to the file
+//     if (written != length) {
+//         perror("Failed to write complete buffer to file");
+//     }
+// 
+//     fclose(file); // Close the file
+// }
 
 /* This function sends server side buffer metadata to the connected client */
 static int send_server_metadata_to_client() 
@@ -373,7 +419,12 @@ static int send_server_metadata_to_client()
 	       return ret;
        }
        debug("Local buffer metadata has been sent to the client \n");
-       write_buffer_to_file(server_buffer_mr->addr, client_metadata_attr.length, "output_buffer.bin");
+       write_buffer_to_file((server_buffer_mr->addr), client_metadata_attr.length, "output_buffer.bin");
+
+       // if (strcmp(server_buffer_mr->addr, "SPECIAL_READ") == 0) {
+       // 		
+       // }
+
        return 0;
 }
 
