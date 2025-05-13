@@ -1,8 +1,7 @@
 /*
  * This is a RDMA server side code. 
  *
- * Author: Animesh Trivedi 
- *         atrivedi@apache.org 
+ * Based on code by Animesh Trivedi (atrivedi@apache.org)
  *
  * TODO: Cleanup previously allocated resources in case of an error condition
  */
@@ -273,6 +272,27 @@ static int accept_client_connection()
 	return ret;
 }
 
+// NOTE: is this besides the point of rdma? possibly... 
+// but does it work? indeed...
+void write_buffer_to_file(void *buffer, size_t length, const char *filename) {
+    // real fileanem
+    char filename_actual[256];
+    snprintf(filename_actual, sizeof(filename_actual), "output_buffer_%ld_%d.bin", time(NULL), rand());
+
+    FILE *file = fopen(filename_actual, "wb"); // Open file for writing in binary mode
+    if (!file) {
+        perror("Failed to open file for writing");
+        return;
+    }
+
+    size_t written = fwrite(buffer, 1, length, file); // Write the buffer to the file
+    if (written != length) {
+        perror("Failed to write complete buffer to file");
+    }
+
+    fclose(file); // Close the file
+}
+
 /* This function sends server side buffer metadata to the connected client */
 static int send_server_metadata_to_client() 
 {
@@ -353,6 +373,7 @@ static int send_server_metadata_to_client()
 	       return ret;
        }
        debug("Local buffer metadata has been sent to the client \n");
+       write_buffer_to_file(server_buffer_mr->addr, client_metadata_attr.length, "output_buffer.bin");
        return 0;
 }
 
@@ -431,6 +452,8 @@ void usage()
 
 int main(int argc, char **argv) 
 {
+
+    while (1) {
 	int ret, option;
 	struct sockaddr_in server_sockaddr;
 	bzero(&server_sockaddr, sizeof server_sockaddr);
@@ -470,20 +493,21 @@ int main(int argc, char **argv)
 		rdma_error("Failed to setup client resources, ret = %d \n", ret);
 		return ret;
 	}
-	ret = accept_client_connection();
-	if (ret) {
-		rdma_error("Failed to handle client cleanly, ret = %d \n", ret);
-		return ret;
-	}
-	ret = send_server_metadata_to_client();
-	if (ret) {
-		rdma_error("Failed to send server metadata to the client, ret = %d \n", ret);
-		return ret;
-	}
+    ret = accept_client_connection();
+    if (ret) {
+        rdma_error("Failed to handle client cleanly, ret = %d \n", ret);
+        return ret;
+    }
+    ret = send_server_metadata_to_client();
+    if (ret) {
+        rdma_error("Failed to send server metadata to the client, ret = %d \n", ret);
+        return ret;
+    }
 	ret = disconnect_and_cleanup();
 	if (ret) { 
 		rdma_error("Failed to clean up resources properly, ret = %d \n", ret);
 		return ret;
 	}
+    }
 	return 0;
 }
