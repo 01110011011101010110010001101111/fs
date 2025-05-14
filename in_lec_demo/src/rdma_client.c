@@ -460,6 +460,7 @@ void usage() {
 	exit(1);
 }
 
+// int main(int argc, char **argv) {
 int rdma_client(int argc, char **argv) {
 	struct sockaddr_in server_sockaddr;
 	int ret, option;
@@ -472,6 +473,13 @@ int rdma_client(int argc, char **argv) {
 	while ((option = getopt(argc, argv, "s:a:p:")) != -1) {
 		switch (option) {
 			case 's':
+				printf("called!\n");
+				printf("%d\n", argc);
+				printf("%s\n", argv[0]);
+				printf("%s\n", argv[1]);
+				printf("%s\n", argv[2]);
+				printf("%s\n", argv[3]);
+				printf("%s\n", argv[4]);
 				printf("Passed string is : %s , with count %u \n", 
 						optarg, 
 						(unsigned int) strlen(optarg));
@@ -510,10 +518,11 @@ int rdma_client(int argc, char **argv) {
 	  /* no port provided, use the default port */
 	  server_sockaddr.sin_port = htons(DEFAULT_RDMA_PORT);
 	  }
-	if (src == NULL) {
-		printf("Please provide a string to copy \n");
-		usage();
-       	}
+	// src = "AAA";
+	// if (src == NULL) {
+	// 	printf("Please provide a string to copy \n");
+	// 	usage();
+       	// }
 	ret = client_prepare_connection(&server_sockaddr);
 	if (ret) { 
 		rdma_error("Failed to setup client connection , ret = %d \n", ret);
@@ -540,11 +549,11 @@ int rdma_client(int argc, char **argv) {
 		return ret;
 	}
 	if (check_src_dst()) {
-		printf("Read Data: %s\n", (char *)dst);
+		// printf("Read Data: %s\n", (char *)dst);
 		// rdma_error("src and dst buffers do not match \n");
 	} else {
-		printf("Read Data: %s\n", (char *)dst);
-		printf("...\nSUCCESS, source and destination buffers match \n");
+		// printf("Read Data: %s\n", (char *)dst);
+		// printf("...\nSUCCESS, source and destination buffers match \n");
 	}
 	ret = client_disconnect_and_clean();
 	if (ret) {
@@ -553,7 +562,7 @@ int rdma_client(int argc, char **argv) {
 	return ret;
 }
 
-int run_rdma_client(char* file_contents) {
-	const char *address = "192.168.1.100";
-	return 0;
-}
+// int run_rdma_client(int argc, char **argv){
+// 	rdma_client(argc, argv);
+// 	return 0;
+// }

@@ -24,16 +24,28 @@ char *generate_random_string(int length) {
 }
 
 
-int run_rdma_client(char * file_contents);
+// int run_rdma_client(char * file_contents);
 
 void function1() {
     printf("Read!\n");
-    run_rdma_client(generate_random_string(4));
+    const char *params[] = {
+    	"./bin/demo",
+	"-a", "192.168.1.100",
+	"-s", "AAAA"
+    };
+    int h_argc = 5;
+    rdma_client(h_argc, (char**)params);
 }
 
 void function2() {
     printf("Write!\n");
-    run_rdma_client(generate_random_string(4));
+    const char *params[] = {
+    	"./bin/demo",
+	"-a", "192.168.1.100",
+	"-s", "AAAA"
+    };
+    int h_argc = sizeof(params) / sizeof(params[0]);
+    rdma_client(h_argc, (char**)params);
 }
 
 
@@ -117,7 +129,7 @@ int main() {
 
     address.sin_family = AF_INET;
     // address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_addr.s_addr = inet_addr("10.242.0.24");
+    address.sin_addr.s_addr = inet_addr("10.29.233.75");
     address.sin_port = htons(PORT);
 
     // Bind the socket
